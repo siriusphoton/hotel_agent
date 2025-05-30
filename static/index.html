@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeStay ADK Agent</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        #chat-container { width: 90%; max-width: 600px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; display: flex; flex-direction: column; height: 80vh; }
+        #chat-output { flex-grow: 1; padding: 20px; overflow-y: auto; border-bottom: 1px solid #eee; }
+        .message { margin-bottom: 15px; padding: 10px; border-radius: 5px; line-height: 1.4; }
+        .user-message { background-color: #e1f5fe; align-self: flex-end; margin-left: auto; text-align: right; }
+        .agent-message { background-color: #f1f8e9; align-self: flex-start; margin-right: auto; text-align: left; }
+        .agent-message span { display: inline-block; } /* To allow partial updates */
+        #input-area { display: flex; padding: 10px; border-top: 1px solid #eee;}
+        #message-input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }
+        #send-button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #send-button:hover { background-color: #0056b3; }
+        .error-message { color: red; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-output"></div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type your message...">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatOutput = document.getElementById('chat-output');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        let sessionId = localStorage.getItem('homeStayAdkChatSessionId');
+        if (!sessionId) {
+            sessionId = 'homestay_session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('homeStayAdkChatSessionId', sessionId);
+        }
+        console.log("Using HomeStay session ID:", sessionId);
+
+        let currentAgentMessageSpan = null;
+
+        async function sendMessage() {
+            const messageText = messageInput.value.trim();
+            if (messageText === '') return;
+
+            appendMessageToChat(messageText, 'user-message');
+            messageInput.value = '';
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+
+            // Create a new span for the agent's response to stream into
+            const agentMessageDiv = document.createElement('div');
+            agentMessageDiv.classList.add('message', 'agent-message');
+            currentAgentMessageSpan = document.createElement('span');
+            agentMessageDiv.appendChild(currentAgentMessageSpan);
+            chatOutput.appendChild(agentMessageDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+
+            try {
+                const response = await fetch('/chat-stream', { // Assuming main.py is at the root
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: messageText, session_id: sessionId })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    appendMessageToChat(`Error: ${response.status} ${errorText}`, 'error-message');
+                    currentAgentMessageSpan.textContent = `Error: ${response.status}`; // Update placeholder
+                    resetInput();
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                let accumulatedResponse = "";
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n\n'); // SSE delimiter
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataPart = line.substring(6);
+                            if (dataPart.startsWith('Error:')) {
+                                // If we have a dedicated error display, use it
+                                // For now, append to current agent message or create new error message
+                                currentAgentMessageSpan.textContent += dataPart;
+                            } else {
+                                accumulatedResponse += dataPart;
+                                currentAgentMessageSpan.textContent = accumulatedResponse; // Update the content of the span
+                            }
+                            chatOutput.scrollTop = chatOutput.scrollHeight;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error sending message or processing stream:', error);
+                if (currentAgentMessageSpan) {
+                    currentAgentMessageSpan.textContent = 'Error connecting to the agent.';
+                } else {
+                    appendMessageToChat('Error connecting to the agent.', 'error-message');
+                }
+            } finally {
+                resetInput();
+                // currentAgentMessageSpan is part of a message already, no need to null it for this structure
+            }
+        }
+
+        function appendMessageToChat(text, className) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', className);
+            messageDiv.textContent = text;
+            chatOutput.appendChild(messageDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+            return messageDiv;
+        }
+
+        function resetInput() {
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        appendMessageToChat("HomeStay Agent is ready. Ask about bookings or availability!", "agent-message");
+    </script>
+</body>
+</html>
