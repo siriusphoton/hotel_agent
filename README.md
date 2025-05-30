@@ -31,7 +31,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 Install the necessary Python packages:
 
 ```bash
-pip install google-adk fastapi uvicorn prettytable
+pip install google-adk fastapi uvicorn prettytable async_generator
 ```
 
 ### 3. Set Up API Key
