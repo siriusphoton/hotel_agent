@@ -29,9 +29,8 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Initialize ADK components
-session_service = InMemorySessionService()
 # Assuming root_agent is an instance of a class derived from BaseAgent
-runner = InMemoryRunner(agent=root_agent, session_service=session_service, app_name="HomeStayChatApp")
+runner = InMemoryRunner(agent=root_agent, app_name="HomeStayChatApp")
 
 class ChatRequest(BaseModel):
     message: str
@@ -43,12 +42,12 @@ async def event_stream_generator(session_id: str, user_message_text: str):
     try:
         # Create or get session
         try:
-            session = await session_service.get_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
+            session = await runner.session_service.get_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
             if not session:
-                session = await session_service.create_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
+                session = await runner.session_service.create_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
         except Exception as e:
             # Fallback if get_session fails for a new session_id (depends on InMemorySessionService behavior)
-            session = await session_service.create_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
+            session = await runner.session_service.create_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
 
         user_message_content = Content(parts=[Part(text=user_message_text)])
 
@@ -72,9 +71,11 @@ async def event_stream_generator(session_id: str, user_message_text: str):
 
 @app.post("/chat-stream")
 async def chat_stream(request: ChatRequest):
-    session_id = request.session_id or await session_service.create_session(app_name=runner.app_name, user_id="default_user").id
-    if isinstance(session_id, Session): # If create_session returns a Session object
-        session_id = session_id.id
+    new_session_id_candidate = request.session_id
+    if not new_session_id_candidate:
+        temp_session = await runner.session_service.create_session(app_name=runner.app_name, user_id="default_user")
+        new_session_id_candidate = temp_session.id
+    session_id = new_session_id_candidate
 
     return StreamingResponse(event_stream_generator(session_id, request.message), media_type="text/event-stream")
 

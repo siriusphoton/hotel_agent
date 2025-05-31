@@ -89,10 +89,10 @@ def add_or_get_guest(name: str, phone: str, city: str) -> dict:
         return {"error": f"Database operation failed: {str(e)}"}
     finally:
         if conn: conn.close()
-result = add_or_get_guest(
-    name="Ramesh Kumar",
-    phone="+91 98765 43210",
-    city="Melakottaiyur"
-)
+# result = add_or_get_guest(
+#     name="Ramesh Kumar",
+#     phone="+91 98765 43210",
+#     city="Melakottaiyur"
+# )
 
-print(result)
+# print(result)

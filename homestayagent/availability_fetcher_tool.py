@@ -134,4 +134,4 @@ Example outputs:
         ]
 
     return json_data
-print(availability_fetcher(2, "2025-05-10 14:00:00", "2025-05-12 11:00:00"))
+# print(availability_fetcher(2, "2025-05-10 14:00:00", "2025-05-12 11:00:00"))
