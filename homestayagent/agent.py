@@ -15,7 +15,7 @@ booking_tool = FunctionTool(func=booking)
 add_or_get_guest_tool = FunctionTool(func=add_or_get_guest)
 root_agent = LlmAgent(
     name='HomeStayAgent',
-    model='gemini-2.5-flash-preview-04-17',
+    model='gemini-2.0-flash',
     description='A helpful assistant for user questions.',
     instruction=coordinator_instructions,
     global_instruction=(
