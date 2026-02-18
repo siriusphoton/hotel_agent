@@ -1,4 +1,5 @@
 from google.adk.agents import Agent,LlmAgent
+from google.adk.models.lite_llm import LiteLlm
 from .prompts import (coordinator_instructions)
 from .availability_fetcher_tool import availability_fetcher
 from .booking_tool import booking
@@ -9,13 +10,34 @@ from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools import load_artifacts
 from google.adk.tools.agent_tool import AgentTool
 from .get_user import add_or_get_guest
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 date_today = date.today()
 availability_fetcher_tool = FunctionTool(func=availability_fetcher)
 booking_tool = FunctionTool(func=booking)
 add_or_get_guest_tool = FunctionTool(func=add_or_get_guest)
+'''
 root_agent = LlmAgent(
     name='HomeStayAgent',
-    model='gemini-2.0-flash',
+    model=LiteLlm(
+        model="ollama_chat/gpt-oss:20b-cloud",
+        api_base=os.getenv("OLLAMA_BASE_URL"),
+        headers={"Authorization": f"Bearer {os.getenv('OLLAMA_API_KEY')}"}
+    ),
+    description='A helpful assistant for user questions.',
+    instruction=coordinator_instructions,
+    global_instruction=(
+        f"""Todays date: {date_today}"""
+    ),
+    tools=[availability_fetcher_tool, booking_tool, add_or_get_guest_tool]
+)
+'''
+root_agent = LlmAgent(
+    name='HomeStayAgent',
+    model='gemini-2.5-flash',
     description='A helpful assistant for user questions.',
     instruction=coordinator_instructions,
     global_instruction=(

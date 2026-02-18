@@ -14,4 +14,4 @@ while(1):
 	table.align = "l"
 	for row in results:
 		table.add_row(row)
-	print(f"Available Rooms ({len(results)} options):\n{table}")
+	print(table)
