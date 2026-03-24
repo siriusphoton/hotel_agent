@@ -19,11 +19,11 @@ date_today = date.today()
 availability_fetcher_tool = FunctionTool(func=availability_fetcher)
 booking_tool = FunctionTool(func=booking)
 add_or_get_guest_tool = FunctionTool(func=add_or_get_guest)
-'''
+
 root_agent = LlmAgent(
     name='HomeStayAgent',
     model=LiteLlm(
-        model="ollama_chat/gpt-oss:20b-cloud",
+        model="ollama_chat/gpt-oss:120b-cloud",
         api_base=os.getenv("OLLAMA_BASE_URL"),
         headers={"Authorization": f"Bearer {os.getenv('OLLAMA_API_KEY')}"}
     ),
@@ -34,10 +34,11 @@ root_agent = LlmAgent(
     ),
     tools=[availability_fetcher_tool, booking_tool, add_or_get_guest_tool]
 )
+
 '''
 root_agent = LlmAgent(
     name='HomeStayAgent',
-    model='gemini-2.5-flash',
+    model='gemini-2.0',
     description='A helpful assistant for user questions.',
     instruction=coordinator_instructions,
     global_instruction=(
@@ -45,3 +46,4 @@ root_agent = LlmAgent(
     ),
     tools=[availability_fetcher_tool, booking_tool, add_or_get_guest_tool]
 )
+'''
